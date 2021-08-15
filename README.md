@@ -1,2 +1,3 @@
-# code-nerf
-Official repository for CodeNeRF
+# CodeNeRF
+
+This is the official implementation of CodeNeRF : Disentangled Neural Radiance Fields for Object Categories 
