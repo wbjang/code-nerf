@@ -4,7 +4,7 @@
 
 # CodeNeRF : Disentangled Neural Radiance Fields for Object Categories
 
-The project webpage is now https://sites.google.com/view/wbjang/home/codenerf
+[Project webpage](https://sites.google.com/view/wbjang/home/codenerf)
 
 This is the (previous) official webpage of CodeNeRF : Disentangled Neural Radiance Fields for Object Categories.
 
