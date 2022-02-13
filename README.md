@@ -6,7 +6,7 @@
 
 [Project webpage](https://sites.google.com/view/wbjang/home/codenerf)
 
-Code is coming soon!
+Code is coming soon! (by 20th Feb, 2022)
 
 ### Supplementary Video
 
