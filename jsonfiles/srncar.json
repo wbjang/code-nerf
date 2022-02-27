@@ -1,0 +1,24 @@
+{
+  "net_hyperparams": {
+    "shape_blocks": 3,
+    "texture_blocks": 1,
+    "W": 256,
+    "num_xyz_freq": 10,
+    "num_dir_freq": 4,
+    "latent_dim": 256
+  },
+  "data": {
+    "cat" : "srn_cars",
+    "splits": "cars_train",
+    "data_dir": "../data/ShapeNet_SRN"
+  },
+  "N_samples": 96,
+  "near": 0.8,
+  "far": 1.8,
+  "loss_reg_coef": 1e-4,
+  "lr_schedule": [
+    {"type":  "step", "lr":  1e-4, "interval":  250000},
+    {"type":  "step", "lr":  1e-3, "interval":  250000}
+  ],
+  "check_points": 100000
+}
