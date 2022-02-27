@@ -1,0 +1,20 @@
+name: codenerf
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python>=3.8
+  - pip
+  - pip:
+      - opencv-python
+      - tensorboard
+      - imageio
+      - imageio-ffmpeg
+      - lpips
+  - scipy
+  - numpy
+  - matplotlib
+  - pytorch
+  - torchvision
+  - scikit-image
+  - tqdm
