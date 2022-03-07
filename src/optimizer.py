@@ -34,7 +34,7 @@ class Optimizer():
         self.device = torch.device('cuda:' + str(gpu))
         self.make_model()
         self.load_model_codes(saved_dir)
-        self.make_dataloader(split, len(instance_ids))
+        self.make_dataloader(splits, len(instance_ids))
         print('we are going to save at ', self.save_dir)
         #self.saved_dir = saved_dir
         self.B = batch_size
