@@ -16,7 +16,7 @@ import time
 
 
 class Optimizer():
-    def __init__(self, saved_dir, gpu, instance_ids=[], split='test',
+    def __init__(self, saved_dir, gpu, instance_ids=[], splits='test',
                  jsonfile = 'srncar.json', batch_size=2048, num_opts = 200):
         """
         :param saved_dir: the directory of pre-trained model
@@ -49,7 +49,9 @@ class Optimizer():
     def optimize_objs(self, instance_ids, lr=1e-2, lr_half_interval=50, save_img = True):
         logpath = os.path.join(self.save_dir, 'opt_hpams.json')
         hpam = {'instance_ids' : instance_ids, 'lr': lr, 'lr_half_interval': lr_half_interval,
-                'splits': self.splits}
+                '
+                
+                ': self.splits}
         with open(logpath, 'w') as f:
             json.dump(hpam, f, indent=2)
 
