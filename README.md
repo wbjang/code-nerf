@@ -14,7 +14,9 @@ Please refer to the [project webpage](https://sites.google.com/view/wbjang/home/
 
 ```
 conda env create -f environment.yml
-conda activate code_nerf
+conda activate codenerf
+conda install pytorch==1.9.1 torchvision==0.10.1 cudatoolkit=11.3 -c pytorch -c conda-forge
+pip install setuptools==58.2.0 tensorboard
 ```
 
 ### Catalog
