@@ -47,7 +47,7 @@ class SRN():
         Then, we sample images (the number of instances matter)
         """
         self.data_dir = os.path.join(data_dir, cat, splits)
-        self.ids = np.sort([f.name for f in os.scandir(self.data_dir)])
+        self.ids = np.sort([f.name for f in os.scandir(self.data_dir)])[:300]
         self.lenids = len(self.ids)
         self.num_instances_per_obj = num_instances_per_obj
         self.train = True if splits.split('_')[1] == 'train' else False

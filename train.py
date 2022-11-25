@@ -28,6 +28,6 @@ if __name__ == '__main__':
     B = int(args.batchsize)
     num_instances_per_obj = int(args.num_instances_per_obj)
 
-    trainer = Trainer(save_dir, gpu, jsonfile = args.jsonfile, batch_size = B)
+    trainer = Trainer(save_dir, gpu, jsonfile = args.jsonfile, batch_size = B, check_iter=100)
     trainer.training(iters_crop, iters_all, num_instances_per_obj)
 

@@ -12,11 +12,13 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 import math
 import time
+from tqdm import tqdm
+import faiss
 
 
 class Trainer():
     def __init__(self, save_dir, gpu, jsonfile = 'srncar.json', batch_size=2048,
-                 check_iter = 10000):
+                 check_iter = 10):
         super().__init__()
         # Read Hyperparameters
         hpampath = os.path.join('jsonfiles', jsonfile)
@@ -51,36 +53,97 @@ class Trainer():
         self.make_dataloader(num_instances_per_obj, crop_img = crop_img)
         self.set_optimizers()
         # per object
-        for d in self.dataloader:
+        for d in tqdm(self.dataloader): # batch size 1
             if self.niter < num_iters:
                 focal, H, W, imgs, poses, instances, obj_idx = d
                 obj_idx = obj_idx.to(self.device)
                 # per image
                 self.opts.zero_grad()
+                shape_code, texture_code = self.shape_codes(obj_idx), self.texture_codes(obj_idx)
+                
+                ray_samples = []
+                with torch.no_grad():
+                    for k in range(num_instances_per_obj):
+                        rays_o, viewdir = get_rays(H.item(), W.item(), focal, poses[0,k])
+                        xyz, viewdir, z_vals = sample_from_rays(rays_o, viewdir, self.hpams['near'], self.hpams['far'],
+                                            self.hpams['N_samples'])
+                        ray_samples.append((xyz, viewdir, z_vals))
+                
+                z_shape_np = np.zeros((10*num_instances_per_obj, 128))
+                z_txt_np = np.zeros((10*num_instances_per_obj, 128))
+                img_est_np = np.zeros((10*num_instances_per_obj, 64*64*3))
+                with torch.no_grad():
+                    for i in range(10*num_instances_per_obj):
+                        k = i // 10
+                        z_shape = torch.randn(1, 128).cuda()
+                        z_txt = torch.randn(1, 128).cuda()
+                        xyz, viewdir, z_vals = ray_samples[k]
+                        sigmas, rgbs = self.model(xyz.to(self.device),
+                                                  viewdir.to(self.device),
+                                                  shape_code, 
+                                                  texture_code,
+                                                  z_shape,
+                                                  z_txt)
+                        rgb_rays, _ = volume_rendering(sigmas, rgbs, z_vals.to(self.device))
+                        z_shape_np[i] = z_shape.cpu().numpy()
+                        z_txt_np[i] = z_txt.cpu().numpy()
+                        img_est_np[i] = rgb_rays.view(-1).cpu().numpy()
+                
+                nbrs = faiss.IndexFlatL2(64*64*3)
+                nbrs.add(img_est_np.astype('float32'))
+                _, indices = nbrs.search(imgs[0].view(num_instances_per_obj, -1).cpu().numpy().astype('float32'), 1)
+                indices = indices.squeeze(1)
+                
+                loss = 0
                 for k in range(num_instances_per_obj):
                     # print(k, num_instances_per_obj, poses[0, k].shape, imgs.shape, 'k')
                     t1 = time.time()
                     self.opts.zero_grad()
-                    rays_o, viewdir = get_rays(H.item(), W.item(), focal, poses[0,k])
-                    xyz, viewdir, z_vals = sample_from_rays(rays_o, viewdir, self.hpams['near'], self.hpams['far'],
-                                            self.hpams['N_samples'])
+                    # with torch.no_grad():
+                    #     rays_o, viewdir = get_rays(H.item(), W.item(), focal, poses[0,k])
+                    #     xyz, viewdir, z_vals = sample_from_rays(rays_o, viewdir, self.hpams['near'], self.hpams['far'],
+                    #                         self.hpams['N_samples'])
+                    xyz, viewdir, z_vals = ray_samples[k]
                     loss_per_img, generated_img = [], []
-                    for i in range(0, xyz.shape[0], self.B):
-                        shape_code, texture_code = self.shape_codes(obj_idx), self.texture_codes(obj_idx)
-                        sigmas, rgbs = self.model(xyz[i:i+self.B].to(self.device),
-                                                  viewdir[i:i+self.B].to(self.device),
-                                                  shape_code, texture_code)
-                        rgb_rays, _ = volume_rendering(sigmas, rgbs, z_vals.to(self.device))
-                        loss_l2 = torch.mean((rgb_rays - imgs[0, k, i:i+self.B].type_as(rgb_rays))**2)
-                        if i == 0:
-                            reg_loss = torch.norm(shape_code, dim=-1) + torch.norm(texture_code, dim=-1)
-                            loss_reg = self.hpams['loss_reg_coef'] * torch.mean(reg_loss)
-                            loss = loss_l2 + loss_reg
-                        else:
-                            loss = loss_l2
-                        loss.backward()
-                        loss_per_img.append(loss_l2.item())
-                        generated_img.append(rgb_rays)
+                    
+                    z_shape = torch.from_numpy(z_shape_np[indices[k]]).float().cuda().unsqueeze(0)
+                    z_txt = torch.from_numpy(z_txt_np[indices[k]]).float().cuda().unsqueeze(0)
+                    sigmas, rgbs = self.model(xyz.to(self.device),
+                                              viewdir.to(self.device),
+                                              shape_code, 
+                                              texture_code,
+                                              z_shape,
+                                              z_txt)
+                    rgb_rays, _ = volume_rendering(sigmas, rgbs, z_vals.to(self.device))
+                    
+                    loss_l2 = torch.mean((rgb_rays - imgs[0, k].type_as(rgb_rays))**2)
+                    reg_loss = torch.norm(shape_code, dim=-1) + torch.norm(texture_code, dim=-1)
+                    loss_reg = self.hpams['loss_reg_coef'] * torch.mean(reg_loss)
+                    loss += (loss_l2 + loss_reg)
+                    # loss = loss_l2 + loss_reg
+                    # loss.backward()
+                    loss_per_img.append(loss_l2.item())
+                    generated_img.append(rgb_rays)
+                    
+                    # for i in range(0, xyz.shape[0], self.B):
+                    #     sigmas, rgbs = self.model(xyz[i:i+self.B].to(self.device),
+                    #                               viewdir[i:i+self.B].to(self.device),
+                    #                               shape_code, 
+                    #                               texture_code)
+                    #     rgb_rays, _ = volume_rendering(sigmas, rgbs, z_vals.to(self.device))
+                    #     # import pdb; pdb.set_trace()
+                    #     loss_l2 = torch.mean((rgb_rays - imgs[0, k, i:i+self.B].type_as(rgb_rays))**2)
+                    #     if i == 0:
+                    #         reg_loss = torch.norm(shape_code, dim=-1) + torch.norm(texture_code, dim=-1)
+                    #         loss_reg = self.hpams['loss_reg_coef'] * torch.mean(reg_loss)
+                    #         loss = loss_l2 + loss_reg
+                    #     else:
+                    #         loss = loss_l2
+                    #     loss.backward()
+                    #     loss_per_img.append(loss_l2.item())
+                    #     generated_img.append(rgb_rays)
+                
+                loss.backward()
                 self.opts.step()
                 self.log_psnr_time(np.mean(loss_per_img), time.time() - t1, obj_idx)
                 self.log_regloss(reg_loss, obj_idx)
@@ -130,7 +193,7 @@ class Trainer():
         self.model = CodeNeRF(**self.hpams['net_hyperparams']).to(self.device)
 
     def make_codes(self):
-        embdim = self.hpams['net_hyperparams']['latent_dim']
+        embdim = self.hpams['net_hyperparams']['code_dim']
         d = len(self.dataloader)
         self.shape_codes = nn.Embedding(d, embdim)
         self.texture_codes = nn.Embedding(d, embdim)
