@@ -13,10 +13,20 @@ Please refer to the [project webpage](https://sites.google.com/view/wbjang/home/
 
 
 ```
+# python 3.8
 conda env create -f environment.yml
 conda activate codenerf
 conda install pytorch==1.9.1 torchvision==0.10.1 cudatoolkit=11.3 -c pytorch -c conda-forge
 pip install setuptools==58.2.0 tensorboard
+```
+
+#### ComputeCanada
+```
+module load StdEnv/2020 python/3.8 gcc/9.3.0 cuda/11.1
+virtualenv --no-download env
+source env/bin/activate
+pip install torch==1.9.1+cu111 torchvision==0.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
+pip install -r requirements.txt
 ```
 
 ### Catalog

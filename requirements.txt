@@ -1,0 +1,11 @@
+setuptools==58.2.0
+opencv-python
+tensorboard
+imageio
+imageio-ffmpeg
+lpips
+scipy
+numpy
+matplotlib
+scikit-image
+tqdm
